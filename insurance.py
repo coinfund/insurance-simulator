@@ -110,8 +110,12 @@ class InsurancePool():
     estimator = Estimator(self.p, n=eff_n, P=self.P)
     self.cap += estimator.P0
     self.inbound += estimator.P0
-    print('* issue policy @ $%0.2f,\n\t\tk = %s\n\t\teffective capitalization supports k = %d\n' % \
-      (estimator.P0, estimator.k, self.cap / self.P))
+    excess = self.cap - estimator.k * self.P
+    print("""* issued policy @ $%0.2f
+          required k:     %d
+          actual   k:     %d
+          excess capital: $%0.2f""" % (estimator.P0, estimator.k, self.cap / self.P, excess))
+
     self.L = self.n * self.P
 
   def claim(self):
@@ -125,14 +129,14 @@ class InsurancePool():
   def expire(self):
     print('* policy is expired')
     self.n -= 1
+    self.L -= self.P
 
   def __str__(self):
-
     return """
       n:       %s
-      P:       %s
-      cap:     %s
-      L:       %s
+      P:       $%0.2f
+      cap:     $%0.2f
+      L:       $%0.2f
 
       policies issued:   %-4d
       total $ collected: $%0.2f
@@ -161,7 +165,8 @@ def start(p = 0.05, P=500):
           pool.claim()
         else:
           pool.expire()
-      print(pool)
+    print(pool)
+    input('---> press any key to continue\n')
 
   # Redeem or expire policies until pool
   # is empty...
