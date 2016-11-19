@@ -75,8 +75,16 @@ class Estimator():
     """ % (self.n, self.p, self.pi, self.mu, self.sigma, self.z, self.k, self.P0, self.P, self.r, self.L)
 
 class InsurancePool():
+  """
+  A perpetually rolling pool of insurance policies.
+  """
 
   def __init__(self, p, P, seed=0):
+    """
+      p:     probability of insurable event
+      P:     desired payout
+      seed:  starting seed capital
+    """
     self.n = 0
     self.p = p
     self.P = P
@@ -86,17 +94,26 @@ class InsurancePool():
     self.inbound = 0
 
   def issue(self):
-
+    """
+    Look at the current state of the pool, estimate the new 
+    premium, and issue a new policy.
+    """
     self.n += 1
     self.issued += 1
+
+    # the effective number of collateralized policies
+    # given the fact that we have seed capital
     eff_n = self.cap / self.P
-    pool = Estimator(self.p, n=eff_n, P=self.P)
-    self.cap += pool.P0
-    self.inbound += pool.P0
-    print('selling policy at %0.2f, k = %s, effective capitalization supports k = %d' % (pool.P0, pool.k, self.cap / self.P))
+
+    # estimate the premium
+    estimator = Estimator(self.p, n=eff_n, P=self.P)
+    self.cap += estimator.P0
+    self.inbound += estimator.P0
+    print('selling policy at %0.2f, k = %s, effective capitalization supports k = %d' % (estimator.P0, estimator.k, self.cap / self.P))
     self.L = self.n * self.P
 
   def claim(self):
+    print('policy is claimed')
     self.n -= 1
     self.cap -= self.P
     self.claims += 1
@@ -104,6 +121,7 @@ class InsurancePool():
       raise Exception('pool is insolvent')
 
   def expire(self):
+    print('policy is expired')
     self.n -= 1
 
   def __str__(self):
@@ -137,10 +155,8 @@ def start(p = 0.05, P=500):
     else:
       rnd = random()
       if rnd < p:
-        print('policy is claimed')
         pool.claim()
       else:
-        print('policy is expired')
         pool.expire()
       print(pool)
 
@@ -149,10 +165,8 @@ def start(p = 0.05, P=500):
   while pool.n > 0:
     rnd = random()
     if rnd < p:
-      print('policy is claimed')
       pool.claim()
     else:
-      print('policy is expired')
       pool.expire()
     print(pool)
 
