@@ -2,6 +2,7 @@
 
 from scipy.stats import norm
 from numpy import sqrt, ceil, maximum
+from numpy.random import poisson
 from random import random
 
 class Estimator():
@@ -106,9 +107,6 @@ class InsurancePool():
     # given the fact that we have seed capital
     eff_k = self.cap / self.P
 
-    # estimate the premium, using the default estimator
-    def_est   = Estimator(self.p, n=self.n, P=self.P)
-
     # estimate the premium taking into account total capital pool
     estimator = Estimator(self.p, n=eff_k, P=self.P)
 
@@ -116,15 +114,17 @@ class InsurancePool():
     self.inbound += estimator.P0
     excess = self.cap - estimator.k * self.P
     
-    print("""* issued policy @ $%0.2f
-          required  k:     %d
-          effective k:     %d
-          excess capital: $%0.2f""" % (estimator.P0, def_est.k, eff_k, excess))
+    print("* issued policy @ $%0.2f" % estimator.P0)
+
+      # """* issued policy @ $%0.2f
+      #     required  k:     %d
+      #     effective k:     %d
+      #     excess capital: $%0.2f""" % (estimator.P0, estimator.k, eff_k, excess))
 
     self.L = self.n * self.P
 
   def claim(self):
-    print('* policy is claimed')
+    print('* policy claimed')
     self.n -= 1
     self.cap -= self.P
     self.claims += 1
@@ -132,7 +132,7 @@ class InsurancePool():
       raise Exception('* pool is insolvent')
 
   def expire(self):
-    print('* policy is expired')
+    print('* policy expired')
     self.n -= 1
     self.L -= self.P
 
@@ -140,7 +140,8 @@ class InsurancePool():
     coll = 0 
     if self.L:
       coll = self.cap / self.L * 100
-    
+    excess = self.inbound - self.claims*self.P
+    net = excess - self.L
     return """
       n:       %s
       P:       $%0.2f
@@ -152,39 +153,45 @@ class InsurancePool():
       total $ collected: $%0.2f
       claims:            %-4d
       payouts:           $%0.2f
-    """ % (self.n, self.P, self.cap, self.L, coll, self.issued, self.inbound, self.claims, self.claims*self.P)
+      sample p:          %0.4f
+      excess capital:    $%0.2f
+      net capital:       $%0.2f
+    """ % (self.n, self.P, self.cap, self.L, coll, self.issued, self.inbound, \
+      self.claims, self.claims*self.P, self.claims / self.issued, excess, net)
 
-def start(p = 0.05, P=100):
+def start(p = 0.05, P=100, lam=50):
   """
   Pool simulation.
   """
 
   pool = InsurancePool(p, P, seed=1000)
   
-  
-  # Randomly issue more policies or expire/claim
-  # existing ones...
-  for i in range(10000):
-    rnd = random()
-    if rnd < 0.55:
-      pool.issue()
-    else:
-      rnd = random()
-      if pool.n > 0:
-        if rnd < 1.1 * p:
-          pool.claim()
+  for i in range(1000):
+    # assume policies come in with a Poisson
+    # distribution at a certain rate per day
+    if i % 2 == 0:
+      policies = poisson(lam=lam)
+      for _ in range(policies):
+        pool.issue()
+
+    else:    
+      arrivals = policies
+      for _ in range(arrivals):
+        rnd = random()
+        if pool.n > 0:
+          if rnd < p:
+            pool.claim()
+          else:
+            pool.expire()
         else:
-          pool.expire()
-      else:
-        continue
+          break
+
+
+    # pool.p = pool.claims / pool.issued
+
     print(pool)
     input('---> press any key to continue\n')
 
-  print("""
-    excess capital:  $%0.2f
-    payouts:         %d
-    paid out value:  $%0.2f
-  """ % (pool.cap, pool.claims, pool.claims * pool.P))
-
+  
 if __name__ == '__main__':
   start()
