@@ -116,11 +116,6 @@ class InsurancePool():
     
     print("* issued policy @ $%0.2f" % estimator.P0)
 
-      # """* issued policy @ $%0.2f
-      #     required  k:     %d
-      #     effective k:     %d
-      #     excess capital: $%0.2f""" % (estimator.P0, estimator.k, eff_k, excess))
-
     self.L = self.n * self.P
 
   def claim(self):
@@ -128,6 +123,7 @@ class InsurancePool():
     self.n -= 1
     self.cap -= self.P
     self.claims += 1
+    self.L -= self.P
     if self.cap < 0:
       raise Exception('* pool is insolvent')
 
@@ -159,7 +155,7 @@ class InsurancePool():
     """ % (self.n, self.P, self.cap, self.L, coll, self.issued, self.inbound, \
       self.claims, self.claims*self.P, self.claims / self.issued, excess, net)
 
-def start(p = 0.05, P=100, lam=50):
+def start(p = 0.05, P=100, lam=10):
   """
   Pool simulation.
   """
