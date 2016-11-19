@@ -104,17 +104,22 @@ class InsurancePool():
 
     # the effective number of collateralized policies
     # given the fact that we have seed capital
-    eff_n = self.cap / self.P
+    eff_k = self.cap / self.P
 
-    # estimate the premium
-    estimator = Estimator(self.p, n=eff_n, P=self.P)
+    # estimate the premium, using the default estimator
+    def_est   = Estimator(self.p, n=self.n, P=self.P)
+
+    # estimate the premium taking into account total capital pool
+    estimator = Estimator(self.p, n=eff_k, P=self.P)
+
     self.cap += estimator.P0
     self.inbound += estimator.P0
     excess = self.cap - estimator.k * self.P
+    
     print("""* issued policy @ $%0.2f
-          required k:     %d
-          actual   k:     %d
-          excess capital: $%0.2f""" % (estimator.P0, estimator.k, self.cap / self.P, excess))
+          required  k:     %d
+          effective k:     %d
+          excess capital: $%0.2f""" % (estimator.P0, def_est.k, eff_k, excess))
 
     self.L = self.n * self.P
 
@@ -132,51 +137,48 @@ class InsurancePool():
     self.L -= self.P
 
   def __str__(self):
+    coll = 0 
+    if self.L:
+      coll = self.cap / self.L * 100
+    
     return """
       n:       %s
       P:       $%0.2f
       cap:     $%0.2f
       L:       $%0.2f
+      coll %%:  %0.2f%%
 
       policies issued:   %-4d
       total $ collected: $%0.2f
       claims:            %-4d
       payouts:           $%0.2f
-    """ % (self.n, self.P, self.cap, self.L, self.issued, self.inbound, self.claims, self.claims*self.P)
+    """ % (self.n, self.P, self.cap, self.L, coll, self.issued, self.inbound, self.claims, self.claims*self.P)
 
-def start(p = 0.05, P=500):
+def start(p = 0.05, P=100):
   """
   Pool simulation.
   """
 
-  pool = InsurancePool(p, P, seed=20000)
+  pool = InsurancePool(p, P, seed=1000)
   
   
   # Randomly issue more policies or expire/claim
   # existing ones...
   for i in range(10000):
     rnd = random()
-    if rnd < 0.5:
+    if rnd < 0.55:
       pool.issue()
     else:
       rnd = random()
       if pool.n > 0:
-        if rnd < p:
+        if rnd < 1.1 * p:
           pool.claim()
         else:
           pool.expire()
+      else:
+        continue
     print(pool)
     input('---> press any key to continue\n')
-
-  # Redeem or expire policies until pool
-  # is empty...
-  while pool.n > 0:
-    rnd = random()
-    if rnd < p:
-      pool.claim()
-    else:
-      pool.expire()
-    print(pool)
 
   print("""
     excess capital:  $%0.2f
