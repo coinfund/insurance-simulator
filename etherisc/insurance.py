@@ -1,11 +1,7 @@
-#!/usr/bin/env python
-
 from scipy.stats import norm
 from numpy import sqrt, ceil, maximum
-from numpy.random import poisson
-from random import random
 
-class Estimator():
+class BernoulliEstimator():
   """
   Estimator for calculating premiums and/or payouts for a 
   basic Bernoulli distribution insurance model based on:
@@ -80,7 +76,7 @@ class InsurancePool():
   A perpetually rolling pool of insurance policies.
   """
 
-  def __init__(self, p, P, seed=0):
+  def __init__(self, p, P, seed=0, model=BernoulliEstimator):
     """
       p:     probability of insurable event
       P:     desired payout
@@ -94,6 +90,7 @@ class InsurancePool():
     self.claims  = 0
     self.issued  = 0
     self.inbound = 0
+    self.model   = model
 
   def issue(self):
     """
@@ -108,7 +105,7 @@ class InsurancePool():
     eff_k = self.cap / self.P
 
     # estimate the premium taking into account total capital pool
-    estimator = Estimator(self.p, n=eff_k, P=self.P)
+    estimator = self.model(self.p, n=eff_k, P=self.P)
 
     self.cap += estimator.P0
     self.inbound += estimator.P0
@@ -154,40 +151,3 @@ class InsurancePool():
       net capital:       $%0.2f
     """ % (self.n, self.P, self.cap, self.L, coll, self.issued, self.inbound, \
       self.claims, self.claims*self.P, self.claims / self.issued, excess, net)
-
-def start(p = 0.05, P=100, lam=10):
-  """
-  Pool simulation.
-  """
-
-  pool = InsurancePool(p, P, seed=1000)
-  
-  for i in range(1000):
-    # assume policies come in with a Poisson
-    # distribution at a certain rate per day
-    if i % 2 == 0:
-      policies = poisson(lam=lam)
-      for _ in range(policies):
-        pool.issue()
-
-    else:    
-      arrivals = policies
-      for _ in range(arrivals):
-        rnd = random()
-        if pool.n > 0:
-          if rnd < p:
-            pool.claim()
-          else:
-            pool.expire()
-        else:
-          break
-
-
-    # pool.p = pool.claims / pool.issued
-
-    print(pool)
-    input('---> press any key to continue\n')
-
-  
-if __name__ == '__main__':
-  start()
